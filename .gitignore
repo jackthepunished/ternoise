@@ -1,0 +1,22 @@
+# generated datasets
+data/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# c++ builds
+build/
+*.o
+*.out
+
+# verilator
+obj_dir/
+*.vcd
+*.fst
+
+# editors / os
+.vscode/
+.idea/
+.DS_Store
