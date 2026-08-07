@@ -71,8 +71,8 @@ If v1 denoises acceptably, a micro U-Net is the follow-up experiment — not the
 
 Simulation-first: the entire pipeline — including "hardware" — runs on a desktop before any board is bought. Verilator wraps the synthesized-quality RTL as a library the renderer calls directly, so the end-to-end demo exists first, and the board is chosen from real synthesis numbers (LUTs/BRAM) instead of guesswork.
 
-- [ ] **M0 — Quantization contract.** `docs/QUANT_SPEC.md` + golden test vectors. Every later component obeys this document.
-- [ ] **M1 — Bit-exact twins.** PyTorch `BitConv2d` + C++ golden model + 2-bit weight packer, all matching the vectors exactly.
+- [x] **M0 — Quantization contract.** `docs/QUANT_SPEC.md` + golden test vectors. Every later component obeys this document.
+- [x] **M1 — Bit-exact twins.** PyTorch `BitConv2d` + C++ golden model + 2-bit weight packer, all matching the vectors exactly.
 - [ ] **M2 — The renderer.** OpenGL 4.3 compute-shader path tracer: 1-spp noisy frames, G-buffers, accumulation mode, batch dataset dump.
 - [ ] **M3 — Proof in software.** Train, export, denoise a real frame in the C++ model. PSNR/SSIM vs the noisy baseline gates all further work — no RTL until the math earns it.
 - [ ] **M4 — The hardware.** Line buffers → ternary PE array → full net in SystemVerilog, bit-exact against the golden model in Verilator, cycle counts reported. Synthesis check asserts **zero DSP/multiplier cells inferred**.
