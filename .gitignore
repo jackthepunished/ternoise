@@ -26,3 +26,4 @@ obj_dir/
 /test_ops
 /host_app
 /test_quantize
+/stb_impl.o
