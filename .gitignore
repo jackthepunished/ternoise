@@ -24,3 +24,4 @@ obj_dir/
 # sim binaries
 /golden
 /test_ops
+/host_app
