@@ -1,9 +1,0 @@
-#version 430 core
-layout(local_size_x = 8, local_size_y = 8) in;
-layout(rgba32f, binding = 0) uniform image2D accum;
-void main() {
-    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 res = imageSize(accum);
-    if (px.x >= res.x || px.y >= res.y) return;
-    imageStore(accum, px, vec4(vec2(px) / vec2(res), 0.0, 1.0));
-}

@@ -49,30 +49,47 @@ int main(int argc, char** argv) {
     gl::BindImageTexture(1, tex_normal, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     gl::BindImageTexture(2, tex_depth, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
 
-    GLuint prog_cs = make_program_compute("host/shaders/hello.comp");
+    GLuint prog_cs = make_program_compute("host/shaders/pathtrace.comp");
     GLuint prog_blit = make_program_graphics("host/shaders/blit.vert", "host/shaders/blit.frag");
     GLint u_tex = gl::GetUniformLocation(prog_blit, "tex");
     GLint u_mode = gl::GetUniformLocation(prog_blit, "display_mode");
     GLint u_inv_spp = gl::GetUniformLocation(prog_blit, "inv_spp");
+    GLint u_frame = gl::GetUniformLocation(prog_cs, "frame_index");
+    GLint u_vseed = gl::GetUniformLocation(prog_cs, "view_seed");
+    GLint u_cpos = gl::GetUniformLocation(prog_cs, "cam_pos");
+    GLint u_ctgt = gl::GetUniformLocation(prog_cs, "cam_target");
     GLuint vao;
     gl::GenVertexArrays(1, &vao);
 
+    const float cam_pos[3] = {0.0f, 2.0f, 6.5f};
+    const float cam_target[3] = {0.0f, 1.6f, 0.0f};
+    unsigned frame_index = 0;
+    int view = 0;   // 0 accum, 1 normal, 2 depth
     int rendered = 0;
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
         if (glfwGetKey(win, GLFW_KEY_ESCAPE) == GLFW_PRESS) break;
+        if (glfwGetKey(win, GLFW_KEY_1) == GLFW_PRESS) view = 0;
+        if (glfwGetKey(win, GLFW_KEY_2) == GLFW_PRESS) view = 1;
+        if (glfwGetKey(win, GLFW_KEY_3) == GLFW_PRESS) view = 2;
+        if (glfwGetKey(win, GLFW_KEY_R) == GLFW_PRESS) frame_index = 0;
 
         gl::UseProgram(prog_cs);
+        gl::Uniform1ui(u_frame, frame_index);
+        gl::Uniform1ui(u_vseed, 1u);
+        gl::Uniform3f(u_cpos, cam_pos[0], cam_pos[1], cam_pos[2]);
+        gl::Uniform3f(u_ctgt, cam_target[0], cam_target[1], cam_target[2]);
         gl::DispatchCompute((GLuint)size / 8, (GLuint)size / 8, 1);
         gl::MemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        ++frame_index;
 
         gl::Viewport(0, 0, size, size);
         gl::UseProgram(prog_blit);
         gl::ActiveTexture(GL_TEXTURE0);
-        gl::BindTexture(GL_TEXTURE_2D, tex_accum);
+        gl::BindTexture(GL_TEXTURE_2D, view == 0 ? tex_accum : view == 1 ? tex_normal : tex_depth);
         gl::Uniform1i(u_tex, 0);
-        gl::Uniform1i(u_mode, 1);
-        gl::Uniform1f(u_inv_spp, 1.0f);
+        gl::Uniform1i(u_mode, view == 0 ? 0 : 1);
+        gl::Uniform1f(u_inv_spp, view == 0 ? 1.0f / (float)frame_index : 1.0f);
         gl::BindVertexArray(vao);
         gl::DrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(win);
