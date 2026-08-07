@@ -1,0 +1,1 @@
+{"type": "network", "layers": [{"shift": 5, "relu": 1}, {"shift": 5, "relu": 1}, {"shift": 5, "relu": 1}, {"shift": 5, "relu": 1}, {"shift": 5, "relu": 0}]}
