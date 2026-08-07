@@ -75,7 +75,7 @@ Simulation-first: the entire pipeline — including "hardware" — runs on a des
 
 - [x] **M0 — Quantization contract.** `docs/QUANT_SPEC.md` + golden test vectors. Every later component obeys this document.
 - [x] **M1 — Bit-exact twins.** PyTorch `BitConv2d` + C++ golden model + 2-bit weight packer, all matching the vectors exactly.
-- [ ] **M2 — The renderer.** OpenGL 4.3 compute-shader path tracer: 1-spp noisy frames, G-buffers, accumulation mode, batch dataset dump.
+- [x] **M2 — The renderer.** OpenGL 4.3 compute-shader path tracer: 1-spp noisy frames, G-buffers, accumulation mode, batch dataset dump.
 - [ ] **M3 — Proof in software.** Train, export, denoise a real frame in the C++ model. PSNR/SSIM vs the noisy baseline gates all further work — no RTL until the math earns it.
 - [ ] **M4 — The hardware.** Line buffers → ternary PE array → full net in SystemVerilog, bit-exact against the golden model in Verilator, cycle counts reported. Synthesis check asserts **zero DSP/multiplier cells inferred**.
 - [ ] **M5 — Hardware-in-the-loop.** Live demo: render → Verilated FPGA model → denoised frames on screen. Synthesis numbers → pick a real board. Board bring-up becomes its own chapter.
