@@ -15,8 +15,12 @@ HOSTSRC = host/main.cpp host/gl_loader.cpp host/shader_util.cpp
 host_app: $(HOSTSRC) host/gl_loader.h host/shader_util.h
 	$(CXX) $(CXXFLAGS) $(HOSTSRC) -o host_app -lglfw -lGL
 
-ctest: golden test_ops
+test_quantize: host/test_quantize.cpp host/quantize.cpp host/quantize.h
+	$(CXX) $(CXXFLAGS) host/test_quantize.cpp host/quantize.cpp -o test_quantize
+
+ctest: golden test_ops test_quantize
 	./test_ops
+	./test_quantize
 	@for d in vectors/case*/; do ./golden $$d || exit 1; done
 
 test: pytest ctest

@@ -25,3 +25,4 @@ obj_dir/
 /golden
 /test_ops
 /host_app
+/test_quantize
