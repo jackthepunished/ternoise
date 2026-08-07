@@ -59,3 +59,17 @@ def test_bias_mem_is_twos_complement(tmp_path):
     lines = (tmp_path / "b1.mem").read_text().splitlines()
     assert len(lines) == len(b1)
     assert int(lines[0], 16) == int(b1[0]) & 0xFFFFFFFF
+
+
+def test_illegal_encoding_in_packed_case_rejected(tmp_path):
+    # the 11 code must fail loudly, not reach the RTL testbench as garbage
+    import shutil
+    bad = tmp_path / "bad_case"
+    shutil.copytree(ROOT / "vectors" / "case05_network_packed", bad)
+    raw = bytearray((bad / "w1.bin").read_bytes())
+    raw[0] = 0xFF
+    (bad / "w1.bin").write_bytes(raw)
+    r = run_tool(bad, tmp_path / "out")
+    assert r.returncode != 0
+    assert "illegal weight encoding" in r.stderr
+    assert not (tmp_path / "out" / "w1.mem").exists()
