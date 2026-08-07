@@ -39,19 +39,15 @@ VFLAGS = --cc --exe --build -j 0 -Wall
 # verilator runs its generated sub-make with cwd = --Mdir, so every user C++
 # source handed to it must be an absolute path ($(abspath ...)).
 
-.PHONY: lint rtl_test synth_smoke
+.PHONY: lint rtl_test
 
-build/tb_smoke/tb_smoke: rtl/smoke.sv rtl/tb/tb_smoke.cpp
+build/tb_linebuffer/tb_linebuffer: rtl/linebuffer.sv rtl/tb/tb_linebuffer.cpp
 	@mkdir -p $(@D)
-	$(VERILATOR) $(VFLAGS) --Mdir build/tb_smoke --top-module smoke \
-	    rtl/smoke.sv $(abspath rtl/tb/tb_smoke.cpp) -o tb_smoke
+	$(VERILATOR) $(VFLAGS) --Mdir build/tb_linebuffer --top-module linebuffer \
+	    rtl/linebuffer.sv $(abspath rtl/tb/tb_linebuffer.cpp) -o tb_linebuffer
 
 lint:
-	$(VERILATOR) --lint-only -Wall rtl/smoke.sv --top-module smoke
+	$(VERILATOR) --lint-only -Wall rtl/linebuffer.sv --top-module linebuffer
 
-rtl_test: build/tb_smoke/tb_smoke
-	./build/tb_smoke/tb_smoke
-
-# no -q: yosys routes the stat block through its normal log, which -q silences.
-synth_smoke:
-	yosys synth/smoke.ys
+rtl_test: build/tb_linebuffer/tb_linebuffer
+	./build/tb_linebuffer/tb_linebuffer
