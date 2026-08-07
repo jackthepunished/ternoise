@@ -78,6 +78,17 @@ temporal anything — v1 simplifications are deliberate; do not widen scope.
   build-in-public posts; milestone completions are post-worthy moments. Bahadir
   frames the public narrative around ML inference efficiency.
 
+## Agent workflow (since M3)
+
+Three roles, general across phases. The planner is the interactive session with
+Bahadir: writes the phase plan (docs/plans/), dispatches the other two, acts on
+review verdicts, opens PRs, merges, runs integration. `plan-executor`
+(.claude/agents/) implements one plan task in an isolated worktree and pushes a
+branch. `plan-reviewer` reviews a pushed branch against its task section,
+read-only, and returns a merge verdict. Loop per task: plan -> execute ->
+review -> fix if needed -> PR -> merge (order per the plan's merge-order
+section). Worktree test invocation: `make test PYTHON=<main-checkout>/.venv/bin/python`.
+
 ## Environment quirks
 
 - WSL2 Ubuntu 24.04 on a Windows laptop; repo lives at `~/ternoise` (native FS —
