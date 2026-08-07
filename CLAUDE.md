@@ -78,6 +78,19 @@ temporal anything — v1 simplifications are deliberate; do not widen scope.
   build-in-public posts; milestone completions are post-worthy moments. Bahadir
   frames the public narrative around ML inference efficiency.
 
+## Agent workflow (since M3)
+
+Three roles, general across phases. The planner is the interactive session with
+Bahadir: writes the phase plan (docs/plans/), dispatches the other two, acts on
+review verdicts, opens PRs, merges, runs integration. The executor implements
+one plan task in an isolated worktree, TDD, and pushes a branch. The reviewer
+reviews a pushed branch against its task section, read-only, and returns a
+merge verdict. Role definitions live in `.claude/agents/` (plan-executor,
+plan-reviewer) — local and untracked on purpose; do not commit `.claude/`.
+Loop per task: plan -> execute -> review -> fix if needed -> PR -> merge, in
+the plan's merge order. Worktree test invocation:
+`make test PYTHON=<main-checkout>/.venv/bin/python`.
+
 ## Environment quirks
 
 - WSL2 Ubuntu 24.04 on a Windows laptop; repo lives at `~/ternoise` (native FS —

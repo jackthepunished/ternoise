@@ -24,6 +24,12 @@ obj_dir/
 .idea/
 .DS_Store
 
+# local agent config and worktrees - never public
+.claude/
+
+# packaging metadata
+ternoise.egg-info/
+
 # sim binaries
 /golden
 /test_ops
