@@ -20,3 +20,7 @@ obj_dir/
 .vscode/
 .idea/
 .DS_Store
+
+# sim binaries
+/golden
+/test_ops
