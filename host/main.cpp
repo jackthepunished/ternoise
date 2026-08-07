@@ -2,9 +2,20 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include "gl_loader.h"
+#include "shader_util.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+static GLuint make_tex(GLenum ifmt, int size) {
+    GLuint t;
+    gl::GenTextures(1, &t);
+    gl::BindTexture(GL_TEXTURE_2D, t);
+    gl::TexStorage2D(GL_TEXTURE_2D, 1, ifmt, size, size);
+    gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl::TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    return t;
+}
 
 int main(int argc, char** argv) {
     int size = 256, frames = 0;
@@ -30,13 +41,40 @@ int main(int argc, char** argv) {
     std::printf("GL_VERSION : %s\n", (const char*)gl::GetString(GL_VERSION));
     std::printf("GL_RENDERER: %s\n", (const char*)gl::GetString(GL_RENDERER));
 
+    // image unit conventions: 0 = accum RGBA32F, 1 = normal RGBA32F, 2 = depth R32F
+    GLuint tex_accum = make_tex(GL_RGBA32F, size);
+    GLuint tex_normal = make_tex(GL_RGBA32F, size);
+    GLuint tex_depth = make_tex(GL_R32F, size);
+    gl::BindImageTexture(0, tex_accum, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    gl::BindImageTexture(1, tex_normal, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    gl::BindImageTexture(2, tex_depth, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F);
+
+    GLuint prog_cs = make_program_compute("host/shaders/hello.comp");
+    GLuint prog_blit = make_program_graphics("host/shaders/blit.vert", "host/shaders/blit.frag");
+    GLint u_tex = gl::GetUniformLocation(prog_blit, "tex");
+    GLint u_mode = gl::GetUniformLocation(prog_blit, "display_mode");
+    GLint u_inv_spp = gl::GetUniformLocation(prog_blit, "inv_spp");
+    GLuint vao;
+    gl::GenVertexArrays(1, &vao);
+
     int rendered = 0;
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
         if (glfwGetKey(win, GLFW_KEY_ESCAPE) == GLFW_PRESS) break;
+
+        gl::UseProgram(prog_cs);
+        gl::DispatchCompute((GLuint)size / 8, (GLuint)size / 8, 1);
+        gl::MemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+
         gl::Viewport(0, 0, size, size);
-        gl::ClearColor(0.10f, 0.10f, 0.12f, 1.0f);
-        gl::Clear(GL_COLOR_BUFFER_BIT);
+        gl::UseProgram(prog_blit);
+        gl::ActiveTexture(GL_TEXTURE0);
+        gl::BindTexture(GL_TEXTURE_2D, tex_accum);
+        gl::Uniform1i(u_tex, 0);
+        gl::Uniform1i(u_mode, 1);
+        gl::Uniform1f(u_inv_spp, 1.0f);
+        gl::BindVertexArray(vao);
+        gl::DrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(win);
         if (frames && ++rendered >= frames) break;
     }

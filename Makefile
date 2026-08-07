@@ -11,8 +11,8 @@ golden: sim/main.cpp sim/ops.cpp sim/io.cpp sim/unpack.cpp sim/ops.h sim/tensor.
 test_ops: sim/test_ops.cpp sim/ops.cpp sim/io.cpp sim/ops.h sim/tensor.h
 	$(CXX) $(CXXFLAGS) sim/test_ops.cpp sim/ops.cpp sim/io.cpp -o test_ops
 
-HOSTSRC = host/main.cpp host/gl_loader.cpp
-host_app: $(HOSTSRC) host/gl_loader.h
+HOSTSRC = host/main.cpp host/gl_loader.cpp host/shader_util.cpp
+host_app: $(HOSTSRC) host/gl_loader.h host/shader_util.h
 	$(CXX) $(CXXFLAGS) $(HOSTSRC) -o host_app -lglfw -lGL
 
 ctest: golden test_ops
