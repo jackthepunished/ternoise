@@ -1,6 +1,9 @@
 # generated datasets
 data/
 
+# training checkpoints
+runs/
+
 # python
 __pycache__/
 *.pyc
