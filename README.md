@@ -1,5 +1,7 @@
 # ternoise
 
+![ci](https://github.com/jackthepunished/ternoise/actions/workflows/ci.yml/badge.svg)
+
 > A ray-tracing denoiser with **zero multipliers** — ternary weights, add/sub only, bound for an FPGA.
 
 **Status: Day 0 — built in public, simulation-first.** No hardware has been purchased yet, and that's deliberate (see [Roadmap](#roadmap)).
