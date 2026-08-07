@@ -16,7 +16,7 @@ class BitConv2d(nn.Module):
         self.shift = 5                                    # eval-path shift (M3 calibrates)
 
     def ternary(self):
-        w = self.weight.detach()
+        w = self.weight.detach().cpu()
         gamma = w.abs().mean()
         if gamma == 0:
             return np.zeros(tuple(w.shape), dtype=np.int64)
@@ -34,4 +34,7 @@ class BitConv2d(nn.Module):
 
     def forward(self, x):
         xq = _round_ste(x.clamp(-1, 127 / 128) * 128) / 128  # int8-grid activations
-        return F.conv2d(xq, self._fake_quant_weight(), self.bias, padding=1)
+        y = F.conv2d(xq, self._fake_quant_weight(), None, padding=1)
+        # mirror the integer path: requant's 2^-shift, then the bias
+        # (QUANT_SPEC section 1: gamma's effect lives in the requant shift)
+        return y * (2.0 ** -float(self.shift)) + self.bias.view(1, -1, 1, 1)
