@@ -5,8 +5,8 @@ CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -Werror
 pytest:
 	.venv/bin/pytest -q
 
-golden: sim/main.cpp sim/ops.cpp sim/io.cpp sim/ops.h sim/tensor.h
-	$(CXX) $(CXXFLAGS) sim/main.cpp sim/ops.cpp sim/io.cpp -o golden
+golden: sim/main.cpp sim/ops.cpp sim/io.cpp sim/unpack.cpp sim/ops.h sim/tensor.h sim/unpack.h
+	$(CXX) $(CXXFLAGS) sim/main.cpp sim/ops.cpp sim/io.cpp sim/unpack.cpp -o golden
 
 test_ops: sim/test_ops.cpp sim/ops.cpp sim/io.cpp sim/ops.h sim/tensor.h
 	$(CXX) $(CXXFLAGS) sim/test_ops.cpp sim/ops.cpp sim/io.cpp -o test_ops

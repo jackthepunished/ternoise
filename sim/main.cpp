@@ -1,5 +1,6 @@
 // golden <case_dir> : run a golden vector case, diff against expected.txt.
 #include "ops.h"
+#include "unpack.h"
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -44,12 +45,21 @@ static int run_case(const std::string& dir) {
         const long use_relu = json_int_after(j, "relu", 0, nullptr);
         got = layer(x, load_tensor(dir + "/weights.txt"), load_tensor(dir + "/bias.txt"),
                     (int)shift, use_relu != 0);
-    } else if (type == "network") {
+    } else if (type == "network" || type == "network_packed") {
+        static const int CHANS[6] = {7, 16, 16, 16, 16, 3};  // network v1 (QUANT_SPEC section 5)
         std::vector<Tensor> ws, bs;
         std::vector<int> shifts;
         size_t pos = 0;
         for (int i = 1; i <= 5; ++i) {
-            ws.push_back(load_tensor(dir + "/w" + std::to_string(i) + ".txt"));
+            if (type == "network_packed") {
+                Tensor w;
+                w.dims = {CHANS[i], CHANS[i - 1], 3, 3};
+                w.data = unpack_weights(dir + "/w" + std::to_string(i) + ".bin",
+                                        (size_t)CHANS[i] * CHANS[i - 1] * 9);
+                ws.push_back(w);
+            } else {
+                ws.push_back(load_tensor(dir + "/w" + std::to_string(i) + ".txt"));
+            }
             bs.push_back(load_tensor(dir + "/b" + std::to_string(i) + ".txt"));
             size_t end = 0;
             shifts.push_back((int)json_int_after(j, "shift", pos, &end));

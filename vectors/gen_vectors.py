@@ -59,5 +59,17 @@ def main():
         {"type": "network",
          "layers": [{"shift": s, "relu": int(i < 4)} for i, s in enumerate(shifts)]}) + "\n")
 
+    # case05: same network, weights delivered via the 2-bit packed format
+    from tools.pack_weights import pack
+    d5 = out / "case05_network_packed"; d5.mkdir(parents=True, exist_ok=True)
+    save_tensor(d5 / "input.txt", x)
+    save_tensor(d5 / "expected.txt", ref_ops.network(x, ws, bs, shifts))
+    for i in range(5):
+        (d5 / f"w{i+1}.bin").write_bytes(pack(ws[i]))
+        save_tensor(d5 / f"b{i+1}.txt", bs[i])
+    (d5 / "params.json").write_text(json.dumps(
+        {"type": "network_packed",
+         "layers": [{"shift": s, "relu": int(i < 4)} for i, s in enumerate(shifts)]}) + "\n")
+
 if __name__ == "__main__":
     main()
