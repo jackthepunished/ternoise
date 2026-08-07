@@ -1,0 +1,5 @@
+read_verilog -sv rtl/smoke.sv
+hierarchy -top smoke
+proc; opt
+select -assert-count 0 t:$mul t:$div t:$mod
+stat
