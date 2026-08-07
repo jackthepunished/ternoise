@@ -32,3 +32,26 @@ ctest: golden test_ops test_quantize
 	@for d in vectors/case*/; do ./golden $$d || exit 1; done
 
 test: pytest ctest
+
+# ---- RTL (M4) ----
+VERILATOR = verilator
+VFLAGS = --cc --exe --build -j 0 -Wall
+# verilator runs its generated sub-make with cwd = --Mdir, so every user C++
+# source handed to it must be an absolute path ($(abspath ...)).
+
+.PHONY: lint rtl_test synth_smoke
+
+build/tb_smoke/tb_smoke: rtl/smoke.sv rtl/tb/tb_smoke.cpp
+	@mkdir -p $(@D)
+	$(VERILATOR) $(VFLAGS) --Mdir build/tb_smoke --top-module smoke \
+	    rtl/smoke.sv $(abspath rtl/tb/tb_smoke.cpp) -o tb_smoke
+
+lint:
+	$(VERILATOR) --lint-only -Wall rtl/smoke.sv --top-module smoke
+
+rtl_test: build/tb_smoke/tb_smoke
+	./build/tb_smoke/tb_smoke
+
+# no -q: yosys routes the stat block through its normal log, which -q silences.
+synth_smoke:
+	yosys synth/smoke.ys
