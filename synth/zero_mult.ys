@@ -1,0 +1,8 @@
+# Technology-independent proof: no multiplier/divider cells anywhere in the
+# netlist. -check is load-bearing: without it a missing module is silently
+# blackboxed and the assertion passes vacuously.
+read_verilog -sv -DSYNTHESIS rtl/pe.sv rtl/requant.sv rtl/linebuffer.sv rtl/conv3x3.sv rtl/delay_fifo.sv rtl/denoiser_top.sv
+hierarchy -check -top denoiser_top
+proc; opt; memory -nomap; opt
+select -assert-count 0 t:$mul t:$div t:$mod t:$pow
+stat

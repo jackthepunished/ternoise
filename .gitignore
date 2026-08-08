@@ -36,3 +36,4 @@ ternoise.egg-info/
 /host_app
 /test_quantize
 /stb_impl.o
+synth/case04/

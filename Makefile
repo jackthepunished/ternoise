@@ -145,3 +145,25 @@ rtl_test: build/tb_linebuffer/tb_linebuffer build/tb_requant/tb_requant \
 	$(call TOP_RUN,vectors/case04_network,build/mem/case04_network,case04_network)
 	$(call TOP_RUN,vectors/case05_network_packed,build/mem/case05_network_packed,case05_network_packed)
 	$(call TOP_RUN,build/mem/export64_case,build/mem/export64,export64)
+
+# ---- Synthesis checks (M4 Task 6) ----
+.PHONY: synth_check mem_cases_synth
+
+# synthesis-default .mem files for $readmemh (WFILE/BFILE parameter defaults)
+mem_cases_synth:
+	@mkdir -p synth/case04
+	$(PYTHON) -m tools.case_to_mem vectors/case04_network --out synth/case04
+
+# Source rule note: * / % are banned in DATAPATH expressions; elaboration-time
+# constant math is exempt and enforced by review, not grep (see the plan).
+# No -q on yosys: it silences the log stream carrying the stat block.
+# The tee'd file is the whole yosys log; inferred cells appear only as
+# indented stat rows ("     DSP48E1   N"), so anchor the grep on leading
+# whitespace - the library-loading lines also say DSP48. An if/exit is used
+# because "(...; exit 1) || echo" swallows the failure in a subshell.
+synth_check: mem_cases_synth
+	yosys synth/zero_mult.ys
+	yosys synth/xilinx_stat.ys | tee build/xilinx_stat.txt
+	@if grep -E '^ +DSP' build/xilinx_stat.txt | grep -q .; then \
+	  echo "FAIL: DSP cells inferred"; exit 1; \
+	else echo "synth_check PASS: zero multipliers, zero DSPs"; fi

@@ -1,0 +1,6 @@
+# Xilinx-mapped area estimate: the LUT/BRAM/DSP numbers that pick the M5
+# board. The DSP row of this stat output must read zero (checked by make).
+read_verilog -sv -DSYNTHESIS rtl/pe.sv rtl/requant.sv rtl/linebuffer.sv rtl/conv3x3.sv rtl/delay_fifo.sv rtl/denoiser_top.sv
+hierarchy -check -top denoiser_top
+synth_xilinx -top denoiser_top
+stat
