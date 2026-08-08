@@ -7,6 +7,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends verilator yosys
       - run: python -m venv .venv && .venv/bin/pip install -e ".[dev]" --quiet
       - run: .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu --quiet
       - run: make test
+      - run: make lint rtl_test
+      - run: make synth_check
