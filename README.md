@@ -8,7 +8,7 @@
 
 *Left: the 1-spp path-traced input (7.06 dB PSNR vs reference). Middle: denoised by the SystemVerilog design — every weight is -1, 0, or +1, zero multiplier cells in the netlist (+6.76 dB, bit-exact with the PyTorch integer path). Right: the 1024-spp reference.*
 
-**Status: Day 0 — built in public, simulation-first.** No hardware has been purchased yet, and that's deliberate (see [Roadmap](#roadmap)).
+**Status: the full chain works in simulation.** A trained ternary network denoises real 1-spp frames (+6.76 dB over the input) through SystemVerilog that is bit-exact with the PyTorch integer path — 17 cycles/pixel, zero multiplier cells asserted on every CI run. No hardware has been purchased yet, and that's deliberate (see [Roadmap](#roadmap)).
 
 ---
 
@@ -80,8 +80,8 @@ Simulation-first: the entire pipeline — including "hardware" — runs on a des
 - [x] **M0 — Quantization contract.** `docs/QUANT_SPEC.md` + golden test vectors. Every later component obeys this document.
 - [x] **M1 — Bit-exact twins.** PyTorch `BitConv2d` + C++ golden model + 2-bit weight packer, all matching the vectors exactly.
 - [x] **M2 — The renderer.** OpenGL 4.3 compute-shader path tracer: 1-spp noisy frames, G-buffers, accumulation mode, batch dataset dump.
-- [ ] **M3 — Proof in software.** Train, export, denoise a real frame in the C++ model. PSNR/SSIM vs the noisy baseline gates all further work — no RTL until the math earns it.
-- [ ] **M4 — The hardware.** Line buffers → ternary PE array → full net in SystemVerilog, bit-exact against the golden model in Verilator, cycle counts reported. Synthesis check asserts **zero DSP/multiplier cells inferred**.
+- [x] **M3 — Proof in software.** Trained with QAT, calibrated to power-of-two shifts, exported through the packer; the C++ model denoises validation frames bit-exact vs PyTorch. Gate passed: **+6.76 dB PSNR** over the noisy baseline (7.06 dB -> 13.83 dB val average).
+- [x] **M4 — The hardware.** Line buffers → ternary PE array → full net in SystemVerilog, bit-exact against the golden model in Verilator on trained 256px frames at **17 cycles/pixel** (~88 fps at 100 MHz). Yosys asserts **zero DSP/multiplier cells** on every CI run; 63.7k LUTs / 24 BRAM36 today, with a known LUT reduction queued for M5.
 - [ ] **M5 — Hardware-in-the-loop.** Live demo: render → Verilated FPGA model → denoised frames on screen. Synthesis numbers → pick a real board. Board bring-up becomes its own chapter.
 
 ## Building in public
