@@ -35,3 +35,17 @@ def calibrate(net, frames, pctl=99.9):
         for a in accs:
             y = ref_ops.requant(a + conv.bias_int[:, None, None], s)
             xs.append(ref_ops.relu(y) if use_relu else y)
+
+
+def refresh_bias_int(net):
+    """Recompute every layer's bias_int from its CURRENT FP bias.
+
+    calibrate() sets bias_int once, but the FP biases keep training
+    afterwards, so anything consuming bias_int later (checkpoints, export,
+    the gate eval) must refresh first. Found in M3: stale biases cost
+    0.95 dB on the val gate. Shifts are left untouched - the FP forward
+    trained against them.
+    """
+    for conv in net.convs:
+        b_fp = conv.bias.detach().cpu().numpy().astype(np.float64)
+        conv.bias_int = np.round(128.0 * (2.0 ** conv.shift) * b_fp).astype(np.int64)
