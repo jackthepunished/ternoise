@@ -4,6 +4,10 @@
 
 > A ray-tracing denoiser with **zero multipliers** — ternary weights, add/sub only, bound for an FPGA.
 
+![1 spp input, denoised by the RTL, 1024 spp reference](docs/img/triptych_v0270.png)
+
+*Left: the 1-spp path-traced input (7.06 dB PSNR vs reference). Middle: denoised by the SystemVerilog design — every weight is -1, 0, or +1, zero multiplier cells in the netlist (+6.76 dB, bit-exact with the PyTorch integer path). Right: the 1024-spp reference.*
+
 **Status: Day 0 — built in public, simulation-first.** No hardware has been purchased yet, and that's deliberate (see [Roadmap](#roadmap)).
 
 ---
