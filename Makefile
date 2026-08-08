@@ -39,15 +39,70 @@ VFLAGS = --cc --exe --build -j 0 -Wall
 # verilator runs its generated sub-make with cwd = --Mdir, so every user C++
 # source handed to it must be an absolute path ($(abspath ...)).
 
-.PHONY: lint rtl_test
+.PHONY: lint rtl_test mem_cases
+
+# Golden case dirs converted to $readmemh inputs. Needs the python env, so
+# from a git worktree run: make rtl_test PYTHON=/path/to/repo/.venv/bin/python
+MEM_CASES = case01_conv_hand case02_conv_rand case03_conv_extreme \
+            case04_network case05_network_packed
+MEM_STAMPS = $(patsubst %,build/mem/%/meta.txt,$(MEM_CASES))
+
+build/mem/%/meta.txt: vectors/%/params.json tools/case_to_mem.py tools/pack_weights.py
+	@mkdir -p $(@D)
+	$(PYTHON) -m tools.case_to_mem vectors/$* --out $(@D)
+
+mem_cases: $(MEM_STAMPS)
 
 build/tb_linebuffer/tb_linebuffer: rtl/linebuffer.sv rtl/tb/tb_linebuffer.cpp
 	@mkdir -p $(@D)
 	$(VERILATOR) $(VFLAGS) --Mdir build/tb_linebuffer --top-module linebuffer \
 	    rtl/linebuffer.sv $(abspath rtl/tb/tb_linebuffer.cpp) -o tb_linebuffer
 
+build/tb_requant/tb_requant: rtl/requant.sv rtl/tb/tb_requant.cpp sim/ops.cpp sim/io.cpp
+	@mkdir -p $(@D)
+	$(VERILATOR) $(VFLAGS) --Mdir build/tb_requant --top-module requant \
+	    rtl/requant.sv $(abspath rtl/tb/tb_requant.cpp) \
+	    $(abspath sim/ops.cpp) $(abspath sim/io.cpp) -o tb_requant
+
+# One verilation per (C_IN, C_OUT, RELU) shape - the conv layer's channel
+# counts are elaboration-time parameters, so each golden conv case needs its
+# own model. TB_* mirror the -G values into the harness, which re-checks them
+# against the case's meta.txt.
+CONV_SRC = rtl/pe.sv rtl/requant.sv rtl/conv3x3.sv
+CONV_TB  = $(abspath rtl/tb/tb_conv3x3.cpp) $(abspath sim/io.cpp)
+
+define CONV_BUILD
+build/tb_conv3x3_$(1)/tb_conv3x3: $$(CONV_SRC) rtl/tb/tb_conv3x3.cpp sim/io.cpp
+	@mkdir -p $$(@D)
+	$$(VERILATOR) $$(VFLAGS) --Mdir $$(@D) --top-module conv3x3 \
+	    -GC_IN=$(2) -GC_OUT=$(3) -GRELU="1'b$(4)" \
+	    -CFLAGS "-DTB_C_IN=$(2) -DTB_C_OUT=$(3) -DTB_RELU=$(4)" \
+	    $$(CONV_SRC) $$(CONV_TB) -o tb_conv3x3
+endef
+
+$(eval $(call CONV_BUILD,case01_conv_hand,1,1,1))
+$(eval $(call CONV_BUILD,case02_conv_rand,8,8,1))
+$(eval $(call CONV_BUILD,case03_conv_extreme,32,4,0))
+
+CONV_BINS = build/tb_conv3x3_case01_conv_hand/tb_conv3x3 \
+            build/tb_conv3x3_case02_conv_rand/tb_conv3x3 \
+            build/tb_conv3x3_case03_conv_extreme/tb_conv3x3
+
+# +case= is the golden vector dir (input/expected/bias), +meta= the converted
+# meta.txt, +w1=/+b1= the .mem files the DUT $readmemh's.
+CONV_RUN = $(1) +case=vectors/$(2) +meta=build/mem/$(2)/meta.txt \
+           +w1=build/mem/$(2)/w1.mem +b1=build/mem/$(2)/b1.mem
+
 lint:
 	$(VERILATOR) --lint-only -Wall rtl/linebuffer.sv --top-module linebuffer
+	$(VERILATOR) --lint-only -Wall rtl/pe.sv --top-module pe
+	$(VERILATOR) --lint-only -Wall rtl/requant.sv --top-module requant
+	$(VERILATOR) --lint-only -Wall $(CONV_SRC) --top-module conv3x3
 
-rtl_test: build/tb_linebuffer/tb_linebuffer
+rtl_test: build/tb_linebuffer/tb_linebuffer build/tb_requant/tb_requant \
+          $(CONV_BINS) mem_cases
 	./build/tb_linebuffer/tb_linebuffer
+	./build/tb_requant/tb_requant
+	$(call CONV_RUN,./build/tb_conv3x3_case01_conv_hand/tb_conv3x3,case01_conv_hand)
+	$(call CONV_RUN,./build/tb_conv3x3_case02_conv_rand/tb_conv3x3,case02_conv_rand)
+	$(call CONV_RUN,./build/tb_conv3x3_case03_conv_extreme/tb_conv3x3,case03_conv_extreme)
