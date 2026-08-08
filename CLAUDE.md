@@ -23,7 +23,7 @@ Two load-bearing consequences (do not "fix" these):
 - Accumulators are sized per layer: ceil(log2(9 * C_in * 128)) + 1 bits. 16-bit
   overflows at C_in = 32. Software uses int64 and asserts int32 range.
 
-## Status (updated 2026-08-07)
+## Status (updated 2026-08-08)
 
 - [x] M0 quantization contract + golden vectors
 - [x] M1 bit-exact twins: Python ref (`model/ref_ops.py`), C++ golden model (`sim/`),
@@ -32,15 +32,20 @@ Two load-bearing consequences (do not "fix" these):
 - [x] M2 renderer: GL 4.3 compute path tracer (`host/`), Cornell box, G-buffers,
       accumulation; dataset `data/v1/` = 300 pairs, 256px, 1024-spp refs (gitignored,
       regenerate: `./scripts/run_host.sh --dump 300 --out data/v1 --seed 1058`)
-- [ ] M3 training + software denoising — NEXT. Sketch: dataset loader -> QAT training
-      (L1 vs ref, PSNR/SSIM val) -> calibration (per-layer shift from accumulator
-      stats, bias_int from FP bias; the M1 stubs `shift=5`, `bias_int=0` become real)
-      -> export via packer -> C++ golden model denoises a val frame bit-exact vs
-      int_forward. GATE: +6 dB PSNR over noisy on val avg, else no RTL gets written.
-- [ ] M4 RTL (SystemVerilog + Verilator; line buffers, ternary PE array, bit-exact
-      vs C++ on streamed frames; Yosys check: zero DSP/multiplier cells)
-- [ ] M5 hardware-in-the-loop (Verilated model linked into host) -> synthesis numbers
-      -> only then choose an FPGA board. No board exists yet; buy nothing.
+- [x] M3 training + software denoising: loader/metrics/calibrate/train merged,
+      QAT on RTX 5070 (CUDA torch wheel now in .venv), GATE PASSED +6.76 dB
+      (7.06 -> 13.83 val avg; first eval failed +5.81 from stale bias_int -
+      now auto-refreshed at checkpoint save). Checkpoint: runs/v1/best_biasfix.pt.
+- [x] M4 RTL: streaming 5-layer chain (c_out-serial PEs, 2-line buffers,
+      valid/ready), bit-exact in Verilator on all network cases AND a trained
+      256px frame (17.22 cyc/px). CI runs lint + rtl_test + synth_check;
+      yosys asserts zero mul/div/mod + zero DSP48. Area 63.7k LUT / 24 BRAM36
+      (3x estimate: per-tap weight-code part-selects become mux forests -
+      fix queued for M5: C_OUT-indexed wide-word BRAM ROMs).
+- [ ] M5 hardware-in-the-loop (Verilated model linked into host) -> LUT
+      reduction -> synthesis numbers -> only then choose an FPGA board. No
+      board exists yet; buy nothing. NEXT - needs a phase plan discussed with
+      Bahadir first.
 
 Master plan: `~/.claude/plans/we-must-be-careful-velvety-knuth.md` (outside repo).
 Phase plans live in `docs/plans/` (M0/M1 and M2 plans there show the house style).
@@ -60,8 +65,9 @@ temporal anything — v1 simplifications are deliberate; do not widen scope.
   R reset, ESC quit). The launcher forces `GALLIUM_DRIVER=d3d12`; without it WSLg
   gives llvmpipe (software GL). GL function loading is hand-rolled in
   `host/gl_loader.h` — add new GL calls to the X-macro list there.
-- Python env: `.venv` created with `uv venv` (system python3-venv also available).
-  Torch is CPU-only currently; swap to CUDA wheel for M3 training (RTX 5070 present).
+- Python env: `.venv` created with `uv venv` — no pip inside; use
+  `uv pip install --python .venv/bin/python`. Torch is the cu130 CUDA wheel
+  (RTX 5070) since M3 training; all tests remain CPU-path.
 
 ## Conventions
 
