@@ -59,3 +59,16 @@ def test_evaluate_reports_gate_delta(tmp_path):
                       "delta_psnr"}
     assert m["delta_psnr"] == pytest.approx(m["psnr_den"] - m["psnr_noisy"])
     assert len(r["frames"]) == 1
+
+
+def test_checkpoints_carry_fresh_bias_int(tmp_path):
+    # the saved bias_int must match the FINAL FP biases, not calibration-time
+    torch.manual_seed(1058)
+    net = DenoiseNet()
+    train(net, synth_ds(8), synth_ds(2, seed=7), epochs=2, batch_size=4,
+          out_dir=tmp_path, recalibrate=None, recalib_epochs=0)
+    net2 = load_checkpoint(tmp_path / "last.pt")
+    for conv in net2.convs:
+        b_fp = conv.bias.detach().cpu().numpy().astype(np.float64)
+        want = np.round(128.0 * (2.0 ** conv.shift) * b_fp).astype(np.int64)
+        assert np.array_equal(conv.bias_int, want)

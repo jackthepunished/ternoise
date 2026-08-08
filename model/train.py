@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from model.calibrate import refresh_bias_int
 from model.network import DenoiseNet
 
 
@@ -70,6 +71,9 @@ def train(net, train_ds, val_ds, *, epochs=150, lr=1e-3, batch_size=8,
             psnrs = [_psnr_fp(net(x.to(device)), ref.to(device))
                      for x, ref in vl]
         vp = float(np.mean(psnrs)) if psnrs else float("nan")
+        # bias_int goes stale as the FP biases train (M3: cost 0.95 dB on the
+        # gate); checkpoints must always carry values matching current weights
+        refresh_bias_int(net)
         save_checkpoint(out / "last.pt", net, epoch, vp)
         if vp > best_psnr:
             best_psnr = vp

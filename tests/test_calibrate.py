@@ -74,3 +74,21 @@ def test_export_case_is_bit_exact_in_cpp(tmp_path):
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "PASS" in r.stdout
+
+
+def test_refresh_bias_int_tracks_trained_biases():
+    # M3 finding: bias_int set at calibration goes stale as FP biases keep
+    # training (cost 0.95 dB on the val gate). refresh must recompute it.
+    from model.calibrate import refresh_bias_int
+    net = seeded_net()
+    for i, conv in enumerate(net.convs):
+        conv.shift = 2 + (i % 3)
+        with torch.no_grad():
+            conv.bias.copy_(torch.linspace(-0.9, 0.7, conv.bias.numel()))
+        conv.bias_int = np.zeros(conv.bias.numel(), dtype=np.int64)  # stale
+    refresh_bias_int(net)
+    for conv in net.convs:
+        b_fp = conv.bias.detach().cpu().numpy().astype(np.float64)
+        want = np.round(128.0 * (2.0 ** conv.shift) * b_fp).astype(np.int64)
+        assert np.array_equal(conv.bias_int, want)
+        assert conv.bias_int.dtype == np.int64
