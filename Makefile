@@ -51,7 +51,24 @@ build/mem/%/meta.txt: vectors/%/params.json tools/case_to_mem.py tools/pack_weig
 	@mkdir -p $(@D)
 	$(PYTHON) -m tools.case_to_mem vectors/$* --out $(@D)
 
-mem_cases: $(MEM_STAMPS)
+# A real-shape 64x64 network case built from a seeded random net through M3's
+# calibration and export path. Bit-exactness needs no trained weights, so M4
+# verification does not block on M3's training gate; the trained-weight run is
+# M4 Task 7. This explicit rule takes precedence over the pattern rule above
+# (there is no vectors/export64).
+build/mem/export64/meta.txt: tools/export_case.py model/calibrate.py \
+                             model/network.py tools/case_to_mem.py
+	@mkdir -p $(@D)
+	$(PYTHON) -c "import torch, numpy as np; \
+	  from model.network import DenoiseNet; from model.calibrate import calibrate; \
+	  from tools.export_case import export_case; \
+	  torch.manual_seed(1058); net = DenoiseNet(); \
+	  rng = np.random.default_rng(1058); \
+	  f = rng.integers(-128, 128, size=(7, 64, 64)).astype(np.int64); \
+	  calibrate(net, [f]); export_case(net, f, 'build/mem/export64_case')"
+	$(PYTHON) -m tools.case_to_mem build/mem/export64_case --out $(@D)
+
+mem_cases: $(MEM_STAMPS) build/mem/export64/meta.txt
 
 build/tb_linebuffer/tb_linebuffer: rtl/linebuffer.sv rtl/tb/tb_linebuffer.cpp
 	@mkdir -p $(@D)
@@ -93,16 +110,38 @@ CONV_BINS = build/tb_conv3x3_case01_conv_hand/tb_conv3x3 \
 CONV_RUN = $(1) +case=vectors/$(2) +meta=build/mem/$(2)/meta.txt \
            +w1=build/mem/$(2)/w1.mem +b1=build/mem/$(2)/b1.mem
 
+# The whole v1 network. One verilation covers every network case: channels are
+# fixed by the topology, dims and shifts are runtime ports.
+TOP_SRC = rtl/pe.sv rtl/requant.sv rtl/linebuffer.sv rtl/conv3x3.sv \
+          rtl/delay_fifo.sv rtl/denoiser_top.sv
+TOP_TB  = $(abspath rtl/tb/tb_denoiser.cpp) $(abspath sim/io.cpp)
+
+build/tb_denoiser/tb_denoiser: $(TOP_SRC) rtl/tb/tb_denoiser.cpp sim/io.cpp
+	@mkdir -p $(@D)
+	$(VERILATOR) $(VFLAGS) --Mdir $(@D) --top-module denoiser_top \
+	    $(TOP_SRC) $(TOP_TB) -o tb_denoiser
+
+# $(1) = golden vector dir, $(2) = converted .mem dir, $(3) = report tag.
+TOP_RUN = ./build/tb_denoiser/tb_denoiser +case=$(1) +meta=$(2)/meta.txt +tag=$(3) \
+          +w1=$(2)/w1.mem +b1=$(2)/b1.mem +w2=$(2)/w2.mem +b2=$(2)/b2.mem \
+          +w3=$(2)/w3.mem +b3=$(2)/b3.mem +w4=$(2)/w4.mem +b4=$(2)/b4.mem \
+          +w5=$(2)/w5.mem +b5=$(2)/b5.mem
+
 lint:
 	$(VERILATOR) --lint-only -Wall rtl/linebuffer.sv --top-module linebuffer
 	$(VERILATOR) --lint-only -Wall rtl/pe.sv --top-module pe
 	$(VERILATOR) --lint-only -Wall rtl/requant.sv --top-module requant
 	$(VERILATOR) --lint-only -Wall $(CONV_SRC) --top-module conv3x3
+	$(VERILATOR) --lint-only -Wall rtl/delay_fifo.sv --top-module delay_fifo
+	$(VERILATOR) --lint-only -Wall $(TOP_SRC) --top-module denoiser_top
 
 rtl_test: build/tb_linebuffer/tb_linebuffer build/tb_requant/tb_requant \
-          $(CONV_BINS) mem_cases
+          $(CONV_BINS) build/tb_denoiser/tb_denoiser mem_cases
 	./build/tb_linebuffer/tb_linebuffer
 	./build/tb_requant/tb_requant
 	$(call CONV_RUN,./build/tb_conv3x3_case01_conv_hand/tb_conv3x3,case01_conv_hand)
 	$(call CONV_RUN,./build/tb_conv3x3_case02_conv_rand/tb_conv3x3,case02_conv_rand)
 	$(call CONV_RUN,./build/tb_conv3x3_case03_conv_extreme/tb_conv3x3,case03_conv_extreme)
+	$(call TOP_RUN,vectors/case04_network,build/mem/case04_network,case04_network)
+	$(call TOP_RUN,vectors/case05_network_packed,build/mem/case05_network_packed,case05_network_packed)
+	$(call TOP_RUN,build/mem/export64_case,build/mem/export64,export64)
