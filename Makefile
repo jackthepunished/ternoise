@@ -1,10 +1,15 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -Werror
 
-# python -m pytest (not the pytest script) so the cwd precedes the editable
-# install on sys.path; from a git worktree, override PYTHON with the main
-# checkout's interpreter: make test PYTHON=/path/to/repo/.venv/bin/python
-PYTHON ?= .venv/bin/python
+# python -m pytest (not the pytest script) so this checkout's sources are
+# importable ahead of the editable install; conftest.py asserts the imports
+# actually resolved here. PYTHON is derived from the main checkout's .venv so
+# bare `make test` works from git worktrees unmodified (worktrees share that
+# venv; a branch that changes dependencies still needs its own venv via the
+# command-line override). `:=` blocks environment-variable capture — an
+# exported PYTHON cannot hijack the interpreter — while an explicit
+# `make test PYTHON=...` on the command line still wins.
+PYTHON := $(shell git rev-parse --path-format=absolute --git-common-dir)/../.venv/bin/python
 
 .PHONY: test pytest ctest
 pytest:
@@ -41,8 +46,8 @@ VFLAGS = --cc --exe --build -j 0 -Wall
 
 .PHONY: lint rtl_test mem_cases
 
-# Golden case dirs converted to $readmemh inputs. Needs the python env, so
-# from a git worktree run: make rtl_test PYTHON=/path/to/repo/.venv/bin/python
+# Golden case dirs converted to $readmemh inputs. Needs the python env
+# (PYTHON resolves to the main checkout's .venv from worktrees too, see top).
 MEM_CASES = case01_conv_hand case02_conv_rand case03_conv_extreme \
             case04_network case05_network_packed
 MEM_STAMPS = $(patsubst %,build/mem/%/meta.txt,$(MEM_CASES))

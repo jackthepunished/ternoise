@@ -61,6 +61,10 @@ temporal anything — v1 simplifications are deliberate; do not widen scope.
 
 - `make test` — everything: pytest (`.venv`) + C++ unit tests + all golden cases.
   This must be green before any commit claims completion. CI runs the same.
+  Works unmodified from git worktrees (PYTHON derives the main checkout's
+  .venv via git rev-parse; conftest.py asserts imports resolve in-checkout).
+  Known limit: a branch that changes Python dependencies needs its own venv
+  passed as `make test PYTHON=...` — the shared .venv stays untouched.
 - `make host_app && ./scripts/run_host.sh` — interactive renderer (keys 1/2/3 views,
   R reset, ESC quit). The launcher forces `GALLIUM_DRIVER=d3d12`; without it WSLg
   gives llvmpipe (software GL). GL function loading is hand-rolled in
@@ -94,8 +98,8 @@ reviews a pushed branch against its task section, read-only, and returns a
 merge verdict. Role definitions live in `.claude/agents/` (plan-executor,
 plan-reviewer) — local and untracked on purpose; do not commit `.claude/`.
 Loop per task: plan -> execute -> review -> fix if needed -> PR -> merge, in
-the plan's merge order. Worktree test invocation:
-`make test PYTHON=<main-checkout>/.venv/bin/python`.
+the plan's merge order. Worktree test invocation: bare `make test` (PYTHON
+self-derives from the main checkout; see Commands).
 
 ## Environment quirks
 
