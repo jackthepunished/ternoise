@@ -6,6 +6,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.mark.skipif(not os.environ.get("DISPLAY"), reason="needs a GL context (WSLg/desktop)")
+@pytest.mark.skipif(
+    not (ROOT / "host_app").exists(),
+    reason="host_app not built (make host_app); gitignored, absent in fresh worktrees",
+)
 def test_tiny_dump(tmp_path):
     r = subprocess.run(["scripts/run_host.sh", "--dump", "2", "--out", str(tmp_path),
                         "--size", "64", "--ref-spp", "16", "--seed", "7"],
